@@ -1,78 +1,78 @@
 pipeline {
-
+    agent any
 
     environment {
         SONARQUBE_TOKEN  = credentials('sonar-token')
         AWS_REGION = 'us-east-1'
-        ECR_REGISTRY='963665911471.dkr.ecr.us-east-1.amazonaws.com/poc-project'
-
-
+        ECR_REGISTRY = '963665911471.dkr.ecr.us-east-1.amazonaws.com/poc'
     }
 
-    stages{
-        stage("Git Checkout"){
-               git branch: 'main' , url:'https://github.com/Pradyumnyadav0992/POC-5.git' 
-        }
-        
-        
-        stage("Sonarqube"){
-            steps{
-                    withSonarQubeEnv('Sonarqube') {
-                        sh """
-                            ${tool 'SonarQube Scanner'}/bin/sonar-scanner \
-                            -Dsonar.projectKey=Poc-Project \
-                            -Dsonar.sources=. \
-                            -Dsonar.host.url=http://44.211.194.7:9000 \
-                            -Dsonar.login=$SONARQUBE_TOKEN
-                        """
-
-
-                 }
-
-
-        }
-        }
-        stage("Quality Check"){
-            steps{
-                waitForQualityGate abortPipeline: false,
-                credentialsId: 'sonar-token'
-            }
-
-        }
-        stage("docker build"){
-            steps{
-                sh """
-                    docker build -t ${env.ECR_REGISTRY}:$BUILD_NUMBER .
-                """
-            }
-
-        }
-        stage("Trivy Scan"){
-            steps{
-                sh """
-                trivy image  --exit-code 0 --severity HIGH,CRITICAL --format json -o "trivy-report.json" "${env.ECR_REGISTRY}:$BUILD_NUMBER"
-                """
-            }
-
-
-        }
-        stage("docker push"){
+    stages {
+        stage("Git Checkout") {
             steps {
-                withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'), 
-                                 string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')]) {
+                git branch: 'main', url: 'https://github.com/Pradyumnyadav0992/POC-5.git'
+            }
+        }
+
+        stage("SonarQube Analysis") {
+            steps {
+                withSonarQubeEnv('sonarqube') {
                     sh """
-                    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${env.ECR_REGISTRY}
-					docker push ${env.ECR_REGISTRY}:$BUILD_NUMBER
+                        ${tool 'SonarQube Scanner'}/bin/sonar-scanner \
+                        -Dsonar.projectKey=poc-5 \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://54.224.7.27:9000 \
+                        -Dsonar.login=${SONARQUBE_TOKEN}
                     """
                 }
             }
-
         }
 
-        stage("Deployment"){
-            echo "deployment"
+        stage("Quality Gate") {
+            steps {
+                waitForQualityGate abortPipeline: true
+                credentialsId: 'sonar-token'
+            }
+        }
+
+        stage("Docker Build") {
+            steps {
+                sh """
+                    docker build -t ${ECR_REGISTRY}:${BUILD_NUMBER} .
+                """
+            }
+        }
+
+        stage("Trivy Scan") {
+            steps {
+                sh """
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format json -o trivy-report.json ${ECR_REGISTRY}:${BUILD_NUMBER}
+                """
+            }
+        }
+
+        stage("Docker Push") {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')
+                ]) {
+                    sh """
+                        aws configure set aws_access_key_id $AWS_ACCESS_KEY
+                        aws configure set aws_secret_access_key $AWS_SECRET_KEY
+                        aws configure set region $AWS_REGION
+
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                        docker push ${ECR_REGISTRY}:${BUILD_NUMBER}
+                    """
+                }
+            }
+        }
+
+        stage("Deployment") {
+            steps {
+                echo "Deployment stage (to be implemented)"
+            }
         }
     }
 }
-
-

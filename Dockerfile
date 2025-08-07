@@ -1,18 +1,3 @@
-FROM maven:3.9-eclipse-temurin-17-alpine AS builder
-
-WORKDIR /app
-
-COPY . .
-
-RUN mvn clean package -DskipTests
-
-FROM eclipse-temurin:17-jre
-
-WORKDIR /app
-
-COPY  --from=builder /app/target/poc-2.jar /app/poc-2.jar
-
-EXPOSE 8080
-
-ENTRYPOINT ["java", "-jar", "poc-2.jar"]
-
+FROM openjdk:17
+COPY target/java-web-app-0.0.1-SNAPSHOT.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]
