@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: java-app
-          image: image: 963665911471.dkr.ecr.us-east-1.amazonaws.com/poc:IMAGE_TAG
+          image: 963665911471.dkr.ecr.us-east-1.amazonaws.com/poc:IMAGE_TAG
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
