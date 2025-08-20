@@ -2,7 +2,8 @@ name: CI-CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 env:
   AWS_REGION: us-east-1
@@ -12,12 +13,13 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   # ✅ change to [self-hosted, ec2-label] if you want to run on self-hosted directly
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
+      
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
@@ -27,31 +29,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Maven build
+      - name: Maven Build
         run: mvn clean compile
 
-      - name: SonarQube scan
+      
+      - name: SonarQube Scan with Quality Gate
         uses: sonarsource/sonarqube-scan-action@v4.1.0
         with:
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.sources=.
             -Dsonar.java.binaries=target/classes
+            -Dsonar.qualitygate.wait=true
         env:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
           SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
 
-      - name: SonarQube quality gate
-        uses: sonarsource/sonarqube-quality-gate-action@master
-        timeout-minutes: 2
-        env:
-          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
-
-      - name: Build Docker image
+      - name: Build Docker Image
         run: docker build -t ${{ env.ECR_REGISTRY }}:${{ github.run_number }} .
 
-      - name: Trivy security scan
+      - name: Trivy Security Scan
         run: trivy image --exit-code 0 --severity HIGH,CRITICAL --format json -o trivy-report.json ${{ env.ECR_REGISTRY }}:${{ github.run_number }}
 
       - name: Push to ECR
