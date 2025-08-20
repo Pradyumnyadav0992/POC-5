@@ -2,8 +2,7 @@ name: CI-CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 env:
   AWS_REGION: us-east-1
@@ -16,13 +15,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Maven Build
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Maven build
         run: mvn clean compile
 
-      - name: SonarQube Scan
+      - name: SonarQube scan
         uses: sonarsource/sonarqube-scan-action@v4.1.0
         with:
           args: >
@@ -33,23 +41,23 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
           SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
 
-      - name: SonarQube Quality Gate
+      - name: SonarQube quality gate
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 2
         env:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
           SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
 
-      - name: Build Docker Image
+      - name: Build Docker image
         run: docker build -t ${{ env.ECR_REGISTRY }}:${{ github.run_number }} .
 
-      - name: Trivy Security Scan
+      - name: Trivy security scan
         run: trivy image --exit-code 0 --severity HIGH,CRITICAL --format json -o trivy-report.json ${{ env.ECR_REGISTRY }}:${{ github.run_number }}
 
       - name: Push to ECR
         run: docker push ${{ env.ECR_REGISTRY }}:${{ github.run_number }}
 
-      - name: Deploy to K8s
+      - name: Deploy to Kubernetes
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
           export KUBECONFIG=kubeconfig
