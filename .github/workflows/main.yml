@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  
+    runs-on: [self-hosted, ec2-label] 
 
     steps:
       - name: Checkout Code
