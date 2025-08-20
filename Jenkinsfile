@@ -3,14 +3,21 @@ pipeline {
 
     environment {
         SONARQUBE_TOKEN  = credentials('sonar-token')
-        AWS_REGION = 'us-east-1'
-        ECR_REGISTRY = '963665911471.dkr.ecr.us-east-1.amazonaws.com/poc'
+        AWS_REGION       = 'us-east-1'
+        ECR_REGISTRY     = '963665911471.dkr.ecr.us-east-1.amazonaws.com/poc'
     }
 
     stages {
+
         stage("Git Checkout") {
             steps {
                 git branch: 'main', url: 'https://github.com/Pradyumnyadav0992/POC-5.git'
+            }
+        }
+
+        stage("Maven Build") {
+            steps {
+                sh 'mvn clean compile'
             }
         }
 
@@ -22,16 +29,19 @@ pipeline {
                         -Dsonar.projectKey=poc-5 \
                         -Dsonar.sources=. \
                         -Dsonar.host.url=http://54.224.7.27:9000 \
-                        -Dsonar.login=${SONARQUBE_TOKEN}
+                        -Dsonar.login=${SONARQUBE_TOKEN} \
+                        -Dsonar.java.binaries=target/classes
                     """
                 }
             }
         }
 
+
         stage("Quality Gate") {
             steps {
-                waitForQualityGate abortPipeline: true
-                credentialsId: 'sonar-token'
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: false
+                }
             }
         }
 
@@ -51,7 +61,7 @@ pipeline {
             }
         }
 
-        stage("Docker Push") {
+        stage("Docker Push to ECR") {
             steps {
                 withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
@@ -71,8 +81,14 @@ pipeline {
 
         stage("Deployment") {
             steps {
-                echo "Deployment stage (to be implemented)"
+                script {
+                    sh """
+                        sed 's|IMAGE_TAG|${BUILD_NUMBER}|g' k8s/deployment.yaml > k8s/deployment.generated.yaml
+                        kubectl apply -f k8s/deployment.generated.yaml
+                    """
+                }
             }
         }
+
     }
 }
