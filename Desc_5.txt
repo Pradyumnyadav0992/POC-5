@@ -1,0 +1,5 @@
+1. 10-word Description:
+CI/CD pipeline with Jenkins, Docker, Trivy, SonarQube, EKS, ECR.
+
+2. 20–25 word Explanation:
+This project sets up a Jenkins pipeline to build, scan, and deploy a Java app using Docker, Trivy, SonarQube, AWS ECR, and EKS.

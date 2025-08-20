@@ -1,0 +1,13 @@
+http://k8s-default-javaappi-d3f52b661d-1380789401.us-east-1.elb.amazonaws.com/api/products/hello
+
+Jenkins
+http://54.224.7.27:9090/job/POC-5/42/consoleFull
+
+
+Sonar
+http://54.224.7.27:9000/dashboard?id=poc-5
+
+Grafana
+http://k8s-monitoring-bc9c2e933c-659478423.us-east-1.elb.amazonaws.com/
+
+
