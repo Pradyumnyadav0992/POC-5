@@ -9,7 +9,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REGISTRY: 963665911471.dkr.ecr.us-east-1.amazonaws.com/poc
   SONAR_HOST_URL: http://54.224.7.27:9000
-  SONAR_PROJECT_KEY: poc-5
+  SONAR_PROJECT_KEY: githubaction
 
 jobs:
   build:
@@ -42,7 +42,5 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
-          export KUBECONFIG=kubeconfig
           sed "s|IMAGE_TAG|${{ github.run_number }}|g" k8s/deployment.yaml > k8s/deployment.generated.yaml
           kubectl apply -f k8s/deployment.generated.yaml
